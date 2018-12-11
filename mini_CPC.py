@@ -1,5 +1,9 @@
 ############################################################
 ############################################################
+# yusheng, 2018-12-11
+# email: yusheng.wu@helsinki.fi
+# tel: +358 41 4722 694
+#
 # wiring:
 # GPIO04: counter input
 # GPIO05: sensor_1 output, MAX31865 select, saturator temperature
@@ -9,17 +13,17 @@
 # GPIO23: PWM output, heater
 
 import RPi.GPIO as GPIO
-
 import board
 import busio
 import digitalio
 import adafruit_max31865
 
 import time
-
 from datetime import datetime
 
 from simple_pid import PID
+
+from pymongo import MongoClient
 
 ############################################################
 ############################################################
@@ -69,6 +73,9 @@ pwm_2.start(0) # generate PWM signal with 0% duty cycle
 # initialize flow rate
 flow_setpoint = 0.2 # SLPM
 
+# initialaize database
+db = MongoClient('localhost', 27017)['mini_CPC'] # database name 'mini_CPC'
+collection = db.data # colletction name 'data'
 
 ############################################################
 ############################################################
@@ -79,63 +86,69 @@ print('**** mini_CPC start ****')
 print('************************')
 print('************************')
 
-# OPC counter
-counter  = 0
-time.sleep(1)
-counts = counter
-print('counts = %d' % counts)
+while True:
 
-# get temperatures
-Ts = sensor_1.temperature # saturator temperature
-Tc = sensor_2.temperature # condensor temperature
-To = sensor_3.temperature # optic temperature
-Td = Ts - Tc # temperature difference between saturator and condensor
-print('Ts = %.1f, Tc = %.1f, To = %.1f, Td = %.1f' % (Ts, Tc, To, Td))
+	print('************************')
 
-# change PWM
-pid_2.setpoint = Ts + 5 # set OPC temperature 5 degree higher than saturator
-dc_1 = -pid_1(Td) # cooler duty cycle
-if dc_1 > 100: # duty cycle should between 0-100
-	dc_1 = 100
-elif dc_1 < 0:
-	dc_1 = 0
-dc_2 = pid_2(To) # heater duty cycle
-if dc_2 > 100: # duty cycle should between 0-100
-	dc_2 = 100
-elif dc_2 < 0:
-	dc_2 = 0
-pwm_1.ChangeDutyCycle(dc_1) # change cooler PWM
-pwm_2.ChangeDutyCycle(dc_2) # change heater PWM
-print('cooler PWM = %.1f, heater PWM = %.1f' % (dc_1, dc_2))
+	## OPC counter
+	counter  = 0
+	time.sleep(1)
+	counts = counter
+	# print('counts = %d' % counts)
 
-# flow rate
-flow = 0.2 # SLPM
-print('flow = %.2f' % flow)
+	## get temperatures
+	Ts = sensor_1.temperature # saturator temperature
+	Tc = sensor_2.temperature # condensor temperature
+	To = sensor_3.temperature # optic temperature
+	Td = Ts - Tc # temperature difference between saturator and condensor
+	# print('Ts = %.1f, Tc = %.1f, To = %.1f, Td = %.1f' % (Ts, Tc, To, Td))
 
-# butonal level and fill
+	## change PWM
+	pid_2.setpoint = Ts + 5 # set OPC temperature 5 degree higher than saturator
+	dc_1 = -pid_1(Td) # cooler duty cycle
+	if dc_1 > 100: # duty cycle should between 0-100
+		dc_1 = 100
+	elif dc_1 < 0:
+		dc_1 = 0
+	dc_2 = pid_2(To) # heater duty cycle
+	if dc_2 > 100: # duty cycle should between 0-100
+		dc_2 = 100
+	elif dc_2 < 0:
+		dc_2 = 0
+	pwm_1.ChangeDutyCycle(dc_1) # change cooler PWM
+	pwm_2.ChangeDutyCycle(dc_2) # change heater PWM
+	# print('cooler PWM = %.1f, heater PWM = %.1f' % (dc_1, dc_2))
 
-# get system date-time
-date_time = str(datetime.now())
-print('date time = %s' % date_time)
+	## flow rate
+	flow = 0.2 # SLPM
+	# print('flow = %.2f' % flow)
 
-# get logs
-log = ''
-print('log = %s' % log)
+	## butonal level and fill
 
-# all data into python dictionary then write to mongodb
-dataDict =	{
-	'date_time': date_time,
-	'counts': counts,
-	'Ts': Ts,
-	'Tc': Tc,
-	'To': To,
-	'Td': Td,
-	'flow': flow,
-	'log': log
-}
-# print(dataDict)
+	## get system date-time in UTC
+	date_time = datetime.utcnow()
+	# print('date time = %s' % date_time)
 
+	## get logs
+	log = 'OK'
+	# print('log = %s' % log)
 
-# watch dog
+	## all data into python dictionary then write to mongodb
+	concentration = (counts/flow)*1000 # particles/cm^3 in standard condition
+	dataDict =	{
+		'date_time': date_time,
+		'concentration': concentration,
+		'counts': counts,
+		'Ts': Ts,
+		'Tc': Tc,
+		'To': To,
+		'Td': Td,
+		'flow': flow,
+		'log': log
+	}
+	print(dataDict)
+	collection.insert_one(dataDict)
+
+	## watch dog
 
 
