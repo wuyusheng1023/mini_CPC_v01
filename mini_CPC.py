@@ -7,10 +7,10 @@
 # wiring:
 # GPIO04: counter input
 # GPIO05: sensor_1 output, MAX31865 select, saturator temperature
-# GPIO05: sensor_2 output, MAX31865 select, comdensor temperature
-# GPIO05: sensor_3 output, MAX31865 select, optic temperature
+# GPIO06: sensor_2 output, MAX31865 select, comdensor temperature
+# GPIO13: sensor_3 output, MAX31865 select, optic temperature
 # GPIO23: PWM output, cooler
-# GPIO23: PWM output, heater
+# GPIO24: PWM output, heater
 
 import RPi.GPIO as GPIO
 import board
@@ -60,7 +60,7 @@ Td_set = 20 # temperature difference setpoint between saturator and condensor
 
 # initialize PID
 pid_1 = PID(1, 0.1, 0.05, setpoint=20) # PID for Peltier cooler
-pid_2 = PID(1, 0.1, 0.05, setpoint=50) # PID for optic 
+pid_2 = PID(10, 0.1, 0.05, setpoint=50) # PID for optic 
 
 # initialize GPIO for PWM
 GPIO.setup(23,GPIO.OUT) # initialize GPIO19 as an output
@@ -101,11 +101,11 @@ while True:
 	Tc = sensor_2.temperature # condensor temperature
 	To = sensor_3.temperature # optic temperature
 	Td = Ts - Tc # temperature difference between saturator and condensor
-	# print('Ts = %.1f, Tc = %.1f, To = %.1f, Td = %.1f' % (Ts, Tc, To, Td))
+	print('Ts = %.1f, Tc = %.1f, To = %.1f, Td = %.1f' % (Ts, Tc, To, Td))
 
 	## change PWM
 	pid_2.setpoint = Ts + 5 # set OPC temperature 5 degree higher than saturator
-	dc_1 = -pid_1(Td) # cooler duty cycle
+	dc_1 = pid_1(Td) # cooler duty cycle
 	if dc_1 > 100: # duty cycle should between 0-100
 		dc_1 = 100
 	elif dc_1 < 0:
@@ -117,7 +117,7 @@ while True:
 		dc_2 = 0
 	pwm_1.ChangeDutyCycle(dc_1) # change cooler PWM
 	pwm_2.ChangeDutyCycle(dc_2) # change heater PWM
-	# print('cooler PWM = %.1f, heater PWM = %.1f' % (dc_1, dc_2))
+	print('cooler PWM = %.1f, heater PWM = %.1f' % (dc_1, dc_2))
 
 	## flow rate
 	flow = 0.2 # SLPM
@@ -146,7 +146,7 @@ while True:
 		'flow': flow,
 		'log': log
 	}
-	print(dataDict)
+	# print(dataDict)
 	collection.insert_one(dataDict)
 
 	## watch dog
