@@ -8,8 +8,17 @@
 
 
 import RPi.GPIO as GPIO
+import board
+import busio
+import digitalio
+
+import adafruit_max31865 # PT1000 temperature module
+
 import numpy as np
+
 import time
+
+from simple_pid import PID
 
 ############################################################
 ############################################################
@@ -19,24 +28,23 @@ GPIO_OPC = 4 # GPIO04: counter, input
 
 # wiring outut:
 GPIO_heater_1 = 17 # GPIO, PWM output, heater
-GPIO_heater_2 = 18 # GPIO, PWM output, condensor heater
+GPIO_heater_2 = 18 # GPIO, PWM output, heater
 GPIO_cooler_1 = 27 # GPIO, PWM output, cooler
-GPIO_air_pump = 
+GPIO_cooler_2 = 22 # GPIO, PWM output, cooler
 GPIO_fan = 23 # output, fan
-
 
 # configuration
 sleep_time = 1 # counter interval
 Ts_set = 40 # temperature set point of saturator
 Tc_set = 15 # temperature set point of condensor
 To_set = 42
-P_1 = 10 # PID_1, saturator heater
+P_1 = 10 # PID_1, heater
 I_1 = 0.1
 D_1 = 0.05 
-P_2 = 10 # PID_2, condensor cooler
+P_2 = 10 # PID_2, cooler
 I_2 = 0.1
 D_2 = 0.05
-P_3 = 10 # PID_3, OPC heater
+P_3 = 10 # PID_3, heater
 I_3 = 0.1
 D_3 = 0.05
 
