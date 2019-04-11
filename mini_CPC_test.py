@@ -4,7 +4,7 @@
 # email: yusheng.wu@helsinki.fi
 # tel: +358 41 4722 694
 
-import time
+import os, glob, time
 
 import RPi.GPIO as GPIO
 import Adafruit_ADS1x15
@@ -65,8 +65,42 @@ GPIO.setup(GPIO_air_pump,GPIO.OUT) # output
 GPIO.setup(GPIO_liquid_pump,GPIO.OUT) # output
 GPIO.setup(GPIO_fan,GPIO.OUT) # output
 
+# initialize temperature sensor
+base_dir = '/sys/bus/w1/devices/'
+folders = glob.glob(base_dir + '28*')
+temp_device_files = [folder + '/w1_slave' for folder in folders]
+
+def get_file(ID, files):
+	for file in files:
+		device_file = file
+	file_split = device_file.split(ID)
+	device_file = file_split[0] + ID + file_split[1]
+	return device_file
+
+Ts_file = get_file(Ts_ID, temp_device_files)
+Tc_file = get_file(Tc_ID, temp_device_files)
+To_file = get_file(To_ID, temp_device_files)
+
+def read_temp_raw(device_file):
+	f = open(device_file, 'r')
+	lines = f.readlines()
+	f.close()
+	return lines
+
+def read_temp(device_file):
+	lines = read_temp_raw(device_file)
+	while lines[0].strip()[-3:] != 'YES':
+		time.sleep(0.2)
+		lines = read_temp_raw()
+	equals_pos = lines[1].find('t=')
+	if equals_pos != -1:
+		temp_string = lines[1][equals_pos+2:]
+		temp_c = float(temp_string) / 1000.0
+		return temp_c
+
 # initialize I2C ADC board
 adc = Adafruit_ADS1x15.ADS1115() # create the ADC object
+
 
 ############################################################
 ############################################################
@@ -92,7 +126,7 @@ print('************************')
 while True:
 
 	print('************************************************************************')
-	
+
 	## OPC counter
 	counter_state = GPIO.input(GPIO_OPC)
 	print('counter_state')
@@ -109,4 +143,11 @@ while True:
 	for i in range(4):
 		values[i] = adc.read_adc(i, gain=GAIN)
 	print('| {0:>6} | {1:>6} | {2:>6} | {3:>6} |'.format(*values))
+
+	# temperature modules
+	for file in temp_device_files:
+		print(file)
+		print(read_temp(file))
+
+	time.sleep(sleep_time)
 
