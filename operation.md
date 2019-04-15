@@ -1,7 +1,15 @@
+
+##### mini_CPC operation instrunction
+
+
 Yusheng Wu
+
 yusheng.wu@helsinki.fi
+
 tel: 00358 41 4722694 (FI)
+
 tel: 0086 132 69358090 (CN)
+
 2019-04-15
 
 
