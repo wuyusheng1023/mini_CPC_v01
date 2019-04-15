@@ -6,46 +6,62 @@
 #
 # hardware: 3*DS18B20+, 1*cooler, 2*heater, 1*fan, 1*air_pump, 1*liquild_pump
 
-import os, glob, time
+import os, glob, time, configparser
 import numpy as np
 import RPi.GPIO as GPIO
 import Adafruit_ADS1x15
+from datetime import datetime
 from simple_pid import PID
+from pymongo import MongoClient
 
 ############################################################
 ############################################################
 
-# configuration
-sleep_time = 1 # counter interval
-Ts_ID = '28-00000afd43ff'
-Tc_ID = '28-00000afcb345'
-To_ID = '28-00000afd4235'
-Ts_set = 40 # temperature set point of saturator
-Tc_set = 20 # temperature set point of condensor
-To_set = 42 # temperature set point of OPC
-P_1 = 10 # PID_1, heater_sat
-I_1 = 0.1
-D_1 = 0.05 
-scale_1 = 0.25
-P_2 = 10 # PID_2, cooler
-I_2 = 0.1
-D_2 = 0.05
-scale_2 = 0.5
-P_3 = 10 # PID_3, heater_OPC
-I_3 = 0.1
-D_3 = 0.05
-scale_3 = 0.5
-P_4 = 1000 # PID_4, air_pump
-I_4 = 10
-D_4 = 0.05
-scale_4 = 0.8
-GAIN = 1 # ADC gain
-flow_CH = 0 # flow sensor to ADC channel
-flow_coef = 15 # flow meter calibartion coefficient
-flow_set = 0.2 # L/min
-liquid_pump_installed = 1 # 0: no liquid_pump, 1: installed
-liquid_pump_wait = 60 # cycles to wait between fill liquid, avoid work too often.
-liquid_pump_switch = 2 # cycles to wait to switch, adjust pump speed
+# load configuration
+config_file = 'conf.ini'
+config = configparser.ConfigParser()
+def getConfig(config_file):
+	config.read(config_file)
+	settings = (config['DEFAULT'])
+	working = config['DEFAULT']['working'] == 'T'
+	save_data = config['DEFAULT']['save_data'] == 'T'
+	sleep_time = float(settings['sleep_time'])
+	Ts_ID = settings['Ts_ID']
+	Tc_ID = settings['Tc_ID']
+	To_ID = settings['To_ID']
+	Ts_set = float(settings['Ts_set'])
+	Tc_set = float(settings['Tc_set'])
+	To_set = float(settings['To_set'])
+	P_1 = float(settings['P_1'])
+	I_1 = float(settings['I_1'])
+	D_1 = float(settings['D_1'])
+	scale_1 = float(settings['scale_1'])
+	P_2 = float(settings['P_2'])
+	I_2 = float(settings['I_2'])
+	D_2 = float(settings['D_2'])
+	scale_2 = float(settings['scale_2'])
+	P_3 = float(settings['P_3'])
+	I_3 = float(settings['I_3'])
+	D_3 = float(settings['D_3'])
+	scale_3 = float(settings['scale_3'])
+	P_4 = float(settings['P_4'])
+	I_4 = float(settings['I_4'])
+	D_4 = float(settings['D_4'])
+	scale_4 = float(settings['scale_4'])
+	GAIN = float(settings['GAIN'])
+	flow_CH = int(settings['flow_CH'])
+	flow_coef = float(settings['flow_coef'])
+	flow_set = float(settings['flow_set'])
+	liquid_pump_installed = settings['liquid_pump_installed'] == 'T'
+	liquid_pump_wait = int(settings['liquid_pump_wait'])
+	liquid_pump_switch = int(settings['liquid_pump_switch'])
+	db_host = settings['db_host']
+	db_port = int(settings['db_port'])
+	db_name = settings['db_name']
+	col_name = settings['col_name']
+	return working, save_data, sleep_time, Ts_ID, Tc_ID, To_ID, Ts_set, Tc_set, To_set, P_1, I_1, D_1, scale_1, P_2, I_2, D_2, scale_2, P_3, I_3, D_3, scale_3, P_4, I_4, D_4, scale_4, GAIN, flow_CH, flow_coef, flow_set, liquid_pump_installed, liquid_pump_wait, liquid_pump_switch, db_host, db_port, db_name, col_name
+
+working, save_data, sleep_time, Ts_ID, Tc_ID, To_ID, Ts_set, Tc_set, To_set, P_1, I_1, D_1, scale_1, P_2, I_2, D_2, scale_2, P_3, I_3, D_3, scale_3, P_4, I_4, D_4, scale_4, GAIN, flow_CH, flow_coef, flow_set, liquid_pump_installed, liquid_pump_wait, liquid_pump_switch, db_host, db_port, db_name, col_name = getConfig(config_file)
 
 # list of GPIO
 PIN_3 = 2
@@ -116,7 +132,7 @@ temp_device_files = [folder + '/w1_slave' for folder in folders]
 def get_file(ID, files):
 	for file in files:
 		if ID in file:
-			print(file)
+			# print(file)
 			device_file = file
 	file_split = device_file.split(ID)
 	device_file = file_split[0] + ID + file_split[1]
@@ -134,9 +150,14 @@ def read_temp_raw(device_file):
 
 def read_temp(device_file):
 	lines = read_temp_raw(device_file)
+	count = 0
 	while lines[0].strip()[-3:] != 'YES':
 		time.sleep(0.2)
 		lines = read_temp_raw()
+		count = count + 1
+		if count > 10:
+			raise Exception('cannot temperature from file: ' + device_file)
+
 	equals_pos = lines[1].find('t=')
 	if equals_pos != -1:
 		temp_string = lines[1][equals_pos+2:]
@@ -205,6 +226,24 @@ liquid_level_stat = np.zeros(liquid_pump_wait)
 liquid_pump_stat = np.zeros(liquid_pump_wait)
 liquid_pump(0)
 
+# initialize database
+db = MongoClient(db_host, db_port)[db_name]
+collection = db[col_name]
+if save_data:
+	date_time = datetime.utcnow() # get system date-time in UTC
+	dataDict ={
+		'date_time': date_time,
+		'concentration': -999,
+		'counts': -999,
+		'Ts': -999,
+		'Tc': -999,
+		'To': -999,
+		'Td': -999,
+		'flow': -999,
+		'log': 'start'
+		}
+	collection.insert_one(dataDict)
+
 
 ############################################################
 ############################################################
@@ -215,10 +254,17 @@ print('**** mini_CPC start ****')
 print('************************')
 print('************************')
 
-while True:
+while working:
 
 	print('************************************************************************')
+
+	# load settings
+	working, save_data, sleep_time, Ts_ID, Tc_ID, To_ID, Ts_set, Tc_set, To_set, P_1, I_1, D_1, scale_1, P_2, I_2, D_2, scale_2, P_3, I_3, D_3, scale_3, P_4, I_4, D_4, scale_4, GAIN, flow_CH, flow_coef, flow_set, liquid_pump_installed, liquid_pump_wait, liquid_pump_switch, db_host, db_port, db_name, col_name = getConfig(config_file)
 	
+	# get datettime
+	date_time = datetime.utcnow() # get system date-time in UTC
+	print(f'date time = {date_time}')
+
 	## OPC counter
 	counter  = 0
 	time.sleep(sleep_time)
@@ -229,14 +275,16 @@ while True:
 	Ts = read_temp(Ts_file) # saturator temperature
 	Tc = read_temp(Tc_file) # condensor temperature
 	To = read_temp(To_file) # optics temperature
-	print(f'Ts = {Ts}, Tc = {Tc}, To = {To}')
+	print(f'Ts = {round(Ts, 2)}, Tc = {round(Tc, 2)}, To = {round(To, 2)}')
 
 	## change PWM
+	pid_1 = PID(P_1, I_1, D_1, setpoint=Ts_set)
+	pid_2 = PID(P_2, I_2, D_2, setpoint=Tc_set)
+	pid_3 = PID(P_3, I_3, D_3, setpoint=To_set)
 	dc_1 = pid_1(Ts) # heater duty cycle
 	dc_2 = pid_2(2*Tc_set - Tc) # cooler duty cycle
 	dc_3 = pid_3(To) # heater_2 duty cycle
-	print(f'dc_1 = {dc_1}, dc_2 = {dc_2}, dc_3 = {dc_3}')
-
+	print(f'dc_1 = {round(dc_1, 1)}, dc_2 = {round(dc_2, 1)}, dc_3 = {round(dc_3, 1)}')
 	if dc_1 > 100: # duty cycle should between 0-100
 		dc_1 = 100
 	elif dc_1 < 0:
@@ -257,10 +305,10 @@ while True:
 	pwm_3.ChangeDutyCycle(dc_3)
 
 	## flow rate
-	flow = flow*0.95 + adc.read_adc(flow_CH, gain=GAIN)/32767*4.096*0.05/flow_coef
+	flow = 0.9*flow + 0.1*(adc.read_adc(flow_CH, gain=GAIN)/32767)*4.096*flow_coef
 	dc_4 = pid_4(flow)
-	print(f'flow = {flow}')
-	print(f'dc_4 {dc_4}')
+	print(f'flow = {round(flow, 3)}')
+	print(f'dc_4 = {round(dc_4, 1)}')
 	if dc_4 > 100: # duty cycle should between 0-100
 		dc_4 = 100
 	elif dc_4 < 0:
@@ -272,25 +320,63 @@ while True:
 	if liquid_pump_installed == 1:
 		liquid_level_stat = get_liquid_level(liquid_level_stat)
 		liquid_pump_stat = liquid_pump_act(liquid_level_stat, liquid_pump_stat, liquid_pump_switch)
-		print(f'liquid_level_stat: {liquid_level_stat}')
-		print(f'liquid_pump_stat: {liquid_pump_stat}')
+		print(f'liquid_level_stat = {liquid_level_stat}')
+		print(f'liquid_pump_stat = {liquid_pump_stat}')
 
+	# log
+	if abs(Ts-Ts_set)>2 or abs(Tc-Tc_set)>2 or abs(To-To_set)>2 or abs(flow-flow_set)>0.05:
+		log = 'X'
+	else:
+		log = 'OK'
+	print(f'log = {log}')
 
+	# calculate number concentration
+	if log == 'OK':
+		conc = counts/(flow*1000/60)/sleep_time
+	else:
+		conc = 0
+	print(f'number concentraion = {round(conc)} #/cm3')
 
+	# write to database
+	if save_data:
+		dataDict ={
+			'date_time': date_time,
+			'concentration': conc,
+			'counts': counts,
+			'Ts':Ts,
+			'Tc': Tc,
+			'To': To,
+			'flow': flow,
+			'log': log
+			}
+		collection.insert_one(dataDict)
 
+############################################################
+############################################################
 
+# exit
+print('************************************************************************')
 
+# ending database
+if save_data:
+	date_time = datetime.utcnow() # get system date-time in UTC
+	dataDict ={
+		'date_time': date_time,
+		'concentration': -999,
+		'counts': -999,
+		'Ts': -999,
+		'Tc': -999,
+		'To': -999,
+		'flow': -999,
+		'log': 'end'
+		}
+	collection.insert_one(dataDict)
 
+GPIO.cleanup() # Reset ports
 
-
-
-
-
-
-
-
-
-
-
-
+print('************************')
+print('************************')
+print('*********  bye *********')
+print('************************')
+print('************************')
 
