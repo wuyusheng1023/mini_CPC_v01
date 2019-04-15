@@ -1,5 +1,5 @@
 
-##### mini_CPC operation instrunction
+### mini_CPC operation instrunction
 
 
 Yusheng Wu
@@ -12,19 +12,22 @@ tel: 0086 132 69358090 (CN)
 
 2019-04-15
 
+-------------------------------------
 
-Linux terminal commands:
+
+##### Linux terminal commands:
 pwd: show current absolute path
 cd: go to a directory 
 cd ~: go to home directory
 cd ..: back to parent directory
 ls: files are in the directory you are in
-sudo: root user
+sudo: root user.
 
-Software script is in ‘~/mini_CPC/’.
-Run: cd mini_CPC (from ‘~’ to ‘~/mini_cpc/’)
+##### 
+Software script is in `~/mini_CPC/`.
+Run: `cd mini_CPC` (from `~` to `~/mini_cpc/`)
 
-In ‘~/mini_CPC/’
+In `~/mini_CPC/`
 Run: sudo python mini_cpc_V0.3.py (to start software)
 
 Ctrl + C will stop python running, but it will not clean Raspberry Pi Input/Output status.
