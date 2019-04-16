@@ -13,7 +13,10 @@ tel: 0086 132 69358090 (CN)
 2019-04-15
 
 -------------------------------------
+#### ssh log in
+`ssh pi@172.20.10.2`, IP can be checked by commond: `ifconfig`
 
+password: `13269358090`
 
 #### Linux terminal commands:
 `pwd`: show current absolute path
@@ -34,7 +37,7 @@ mini_CPC python software script is in `~/mini_CPC/`. Run: `cd mini_CPC`
 
 
 #### run python script
-In `~/mini_CPC/`, Run: 'sudo python mini_cpc_V0.3.py' to start software).
+In `~/mini_CPC/`, Run: `sudo python mini_cpc_V0.3.py` to start software).
 
 
 #### quit python
