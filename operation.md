@@ -13,9 +13,10 @@ tel: 0086 132 69358090 (CN)
 2019-04-15
 
 -------------------------------------
+#### ssh log in
+`ssh pi@172.20.10.2`, IP can be checked by commond: `ifconfig`
 
-ssh pi@172.20.10.2
-13269358090
+password: `13269358090`
 
 #### Linux terminal commands:
 `pwd`: show current absolute path
