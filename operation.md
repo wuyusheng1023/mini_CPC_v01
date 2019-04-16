@@ -14,6 +14,8 @@ tel: 0086 132 69358090 (CN)
 
 -------------------------------------
 
+ssh pi@172.20.10.2
+13269358090
 
 #### Linux terminal commands:
 `pwd`: show current absolute path
