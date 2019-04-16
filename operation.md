@@ -36,7 +36,7 @@ mini_CPC python software script is in `~/mini_CPC/`. Run: `cd mini_CPC`
 
 
 #### run python script
-In `~/mini_CPC/`, Run: 'sudo python mini_cpc_V0.3.py' to start software).
+In `~/mini_CPC/`, Run: `sudo python mini_cpc_V0.3.py` to start software).
 
 
 #### quit python
