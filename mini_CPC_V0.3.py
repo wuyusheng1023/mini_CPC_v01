@@ -134,8 +134,11 @@ def get_file(ID, files):
 		if ID in file:
 			# print(file)
 			device_file = file
-	file_split = device_file.split(ID)
-	device_file = file_split[0] + ID + file_split[1]
+	try:
+		file_split = device_file.split(ID)
+		device_file = file_split[0] + ID + file_split[1]
+	except ValueError:
+		print('Tempreture sensors have not been well configured!')
 	return device_file
 
 Ts_file = get_file(Ts_ID, temp_device_files)
@@ -263,19 +266,21 @@ while working:
 	
 	# get datettime
 	date_time = datetime.utcnow() # get system date-time in UTC
-	print(f'date time = {date_time}')
+	print(date_time)
 
 	## OPC counter
 	counter  = 0
 	time.sleep(sleep_time)
 	counts = counter
-	print(f'counts = {counts}')
+	print(counts)
 
 	## get temperatures
 	Ts = read_temp(Ts_file) # saturator temperature
 	Tc = read_temp(Tc_file) # condensor temperature
 	To = read_temp(To_file) # optics temperature
-	print(f'Ts = {round(Ts, 2)}, Tc = {round(Tc, 2)}, To = {round(To, 2)}')
+	print(round(Ts, 2), end = ' ,')
+	print(round(Tc, 2), end = ' ,')
+	print(round(To, 2))
 
 	## change PWM
 	pid_1 = PID(P_1, I_1, D_1, setpoint=Ts_set)
@@ -284,7 +289,9 @@ while working:
 	dc_1 = pid_1(Ts) # heater duty cycle
 	dc_2 = pid_2(2*Tc_set - Tc) # cooler duty cycle
 	dc_3 = pid_3(To) # heater_2 duty cycle
-	print(f'dc_1 = {round(dc_1, 1)}, dc_2 = {round(dc_2, 1)}, dc_3 = {round(dc_3, 1)}')
+	print(round(dc_1, 1), end = ' ,')
+	print(round(dc_2, 1), end = ' ,')
+	print(round(dc_3, 1))
 	if dc_1 > 100: # duty cycle should between 0-100
 		dc_1 = 100
 	elif dc_1 < 0:
@@ -307,8 +314,8 @@ while working:
 	## flow rate
 	flow = 0.9*flow + 0.1*(adc.read_adc(flow_CH, gain=GAIN)/32767)*4.096*flow_coef
 	dc_4 = pid_4(flow)
-	print(f'flow = {round(flow, 3)}')
-	print(f'dc_4 = {round(dc_4, 1)}')
+	print(round(flow, 3))
+	print(round(dc_4, 1))
 	if dc_4 > 100: # duty cycle should between 0-100
 		dc_4 = 100
 	elif dc_4 < 0:
@@ -320,22 +327,22 @@ while working:
 	if liquid_pump_installed == 1:
 		liquid_level_stat = get_liquid_level(liquid_level_stat)
 		liquid_pump_stat = liquid_pump_act(liquid_level_stat, liquid_pump_stat, liquid_pump_switch)
-		print(f'liquid_level_stat = {liquid_level_stat}')
-		print(f'liquid_pump_stat = {liquid_pump_stat}')
+		print(liquid_level_stat)
+		print(liquid_pump_stat)
 
 	# log
 	if abs(Ts-Ts_set)>2 or abs(Tc-Tc_set)>2 or abs(To-To_set)>2 or abs(flow-flow_set)>0.05:
 		log = 'X'
 	else:
 		log = 'OK'
-	print(f'log = {log}')
+	print(log)
 
 	# calculate number concentration
 	if log == 'OK':
 		conc = counts/(flow*1000/60)/sleep_time
 	else:
 		conc = 0
-	print(f'number concentraion = {round(conc)} #/cm3')
+	print(round(conc))
 
 	# write to database
 	if save_data:
