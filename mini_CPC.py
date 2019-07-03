@@ -19,9 +19,6 @@ from pymongo import MongoClient
 
 # load configuration
 dir_path = os.path.dirname(os.path.realpath(__file__))
-print(os.path.realpath(__file__))
-print(dir_path)
-print('-----')
 config_file = dir_path + os.sep + 'conf.ini'
 config = configparser.ConfigParser()
 def getConfig(config_file):

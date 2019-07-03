@@ -1,12 +1,16 @@
 
-import configparser
+import os, configparser
 import pandas as pd
 from datetime import datetime
 from pymongo import MongoClient
 
 
+data_folder = 'data'
+
+dir_path = os.path.dirname(os.path.realpath(__file__))
+
 # load configuration
-config_file = 'conf.ini'
+config_file = dir_path + os.sep + 'conf.ini'
 config = configparser.ConfigParser()
 def getConfig(config_file):
 	config.read(config_file)
@@ -26,7 +30,17 @@ collection = db[col_name]
 # get query
 start = input('input start datetime: ')
 end = input('input end datetime: ')
-file_name = start + '_' + end
+
+data_dir = dir_path + os.sep + data_folder
+try:
+    # Create target Directory
+    os.mkdir(data_dir)
+    print("Directory " , data_dir ,  " Created ") 
+except FileExistsError:
+    print("Directory " , data_dir ,  " already exists")
+
+file_name = data_dir + os.sep + start + '_' + end + '.csv'
+print(file_name)
 start = datetime.strptime(start, '%Y-%m-%d %H:%M')
 end = datetime.strptime(end, '%Y-%m-%d %H:%M')
 query = {'date_time': {'$gte': start, '$lte': end}}
@@ -39,4 +53,4 @@ df =  pd.DataFrame(list(cursor))
 if '_id' in df: del df['_id']
 
 # save to .csv
-df.to_csv(file_name+'.csv', index=False)
+df.to_csv(file_name, index=False)
