@@ -18,7 +18,11 @@ from pymongo import MongoClient
 ############################################################
 
 # load configuration
-config_file = 'conf.ini'
+dir_path = os.path.dirname(os.path.realpath(__file__))
+print(os.path.realpath(__file__))
+print(dir_path)
+print('-----')
+config_file = dir_path + os.sep + 'conf.ini'
 config = configparser.ConfigParser()
 def getConfig(config_file):
 	config.read(config_file)
@@ -263,7 +267,7 @@ while working:
 
 	# load settings
 	working, save_data, sleep_time, Ts_ID, Tc_ID, To_ID, Ts_set, Tc_set, To_set, P_1, I_1, D_1, scale_1, P_2, I_2, D_2, scale_2, P_3, I_3, D_3, scale_3, P_4, I_4, D_4, scale_4, GAIN, flow_CH, flow_coef, flow_set, liquid_pump_installed, liquid_pump_wait, liquid_pump_switch, db_host, db_port, db_name, col_name = getConfig(config_file)
-	
+
 	# get datettime
 	date_time = datetime.utcnow() # get system date-time in UTC
 	print(date_time)
@@ -345,7 +349,9 @@ while working:
 	print(round(conc))
 
 	# write to database
+	# print(save_data)
 	if save_data:
+		# print(dataDict)
 		dataDict ={
 			'date_time': date_time,
 			'concentration': conc,
