@@ -37,12 +37,11 @@ mini_CPC python software script is in `~/mini_CPC/`. Run: `cd mini_CPC`
 
 
 #### run python script
-In `~/mini_CPC/`, Run: `sudo python mini_cpc_V0.3.py` to start software).
+In `~/mini_CPC/`, Run: `sudo python mini_CPC.py` to start software).
 
 
 #### quit python
 'Ctrl + C' will stop python running, but it will not clean Raspberry Pi Input/Output status. So if one is not going to shun down the Raspberry Pi, should use configuration file to quit python.
-
 
 #### modify configuration file
 Configuration file is also in `~/mini_CPC/`. Run: `sudo nano conf.ini` to open the file with a text editor. Change `working = T` to `F` and save. Here should be change back to `T` before running pytho nnext time. One can also change other parameters this way in the `conf.ini` file.
@@ -52,6 +51,7 @@ Configuration file is also in `~/mini_CPC/`. Run: `sudo nano conf.ini` to open t
 open another terminal. in directory `~/mini_CPC/`. Run: `sudo python get_data.py`. You will be ask to input start and end datatime, in the formate of `2019-04-15 22:14`. The python will quit after save data from database to a .csv file, with file name include start and end datatime. System datatime is in UTC.
 
 #### check database working
-Run `mongo` open Mongodb. `use mini_CPC` to switch database, get `switched to db mini_CPC` if working. `db.data.find().limit(1).sort({$natural:-1})` to get last record.
+Run `mongo` open Mongodb. `use mini_CPC` to switch database, get `switched to db mini_CPC` if working.
+`db.data.find().limit(1).sort({$natural:-1})` to get last record.
 
 
