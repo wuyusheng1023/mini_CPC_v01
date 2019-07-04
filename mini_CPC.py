@@ -104,6 +104,11 @@ GPIO_air_pump = PIN_22
 GPIO_liquid_pump = PIN_24
 GPIO_fan = PIN_26
 
+# initialize measured temperature
+Ts = Ts_set
+Tc = Tc_set
+To = To_set
+
 # initialize GPIO
 GPIO.cleanup() # Reset ports
 GPIO.setwarnings(False) # do not show any warnings
@@ -179,7 +184,7 @@ pwm_3 = GPIO.PWM(GPIO_heater_OPC,10)
 pwm_3.start(0)
 
 # initialize flow rate, air pump
-flow = 0
+flow = flow_set
 adc = Adafruit_ADS1x15.ADS1115() # create the ADC object
 pid_4 = PID(P_4, I_4, D_4, setpoint=flow_set) # air pump
 pwm_4 = GPIO.PWM(GPIO_air_pump,50)
@@ -276,9 +281,9 @@ while working:
 	print(counts)
 
 	## get temperatures
-	Ts = read_temp(Ts_file) # saturator temperature
-	Tc = read_temp(Tc_file) # condensor temperature
-	To = read_temp(To_file) # optics temperature
+	Ts = 0.9*Ts + 0.1*read_temp(Ts_file) # saturator temperature
+	Tc = 0.9*Tc + 0.1*read_temp(Tc_file) # condensor temperature
+	To = 0.9*To + 0.1*read_temp(To_file) # optics temperature
 	print(round(Ts, 2), end = ' ,')
 	print(round(Tc, 2), end = ' ,')
 	print(round(To, 2))
@@ -313,7 +318,7 @@ while working:
 	pwm_3.ChangeDutyCycle(dc_3)
 
 	## flow rate
-	flow = 0.9*flow + 0.1*(adc.read_adc(flow_CH, gain=GAIN)/32767)*4.096*flow_coef
+	flow = 0.95*flow + 0.05*(adc.read_adc(flow_CH, gain=GAIN)/32767)*4.096*flow_coef
 	dc_4 = pid_4(flow)
 	print(round(flow, 3))
 	print(round(dc_4, 1))
@@ -356,6 +361,7 @@ while working:
 			'Ts':Ts,
 			'Tc': Tc,
 			'To': To,
+			'Td': To - Tc,
 			'flow': flow,
 			'log': log
 			}
@@ -377,6 +383,7 @@ if save_data:
 		'Ts': -999,
 		'Tc': -999,
 		'To': -999,
+		'Td': -999,
 		'flow': -999,
 		'log': 'end'
 		}
